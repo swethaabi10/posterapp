@@ -1,0 +1,54 @@
+name: Monthly Template Scraper & Festival Cron Job
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    # Run at 23:00 on the 28th, 29th, 30th, and 31st of every month to catch the last day of each calendar month
+    - cron: '0 23 28-31 * *'
+  workflow_dispatch: # Allow manual trigger from GitHub Actions tab anytime
+
+jobs:
+  run-monthly-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+
+      - name: Check if today is the end of the month
+        id: check-date
+        run: |
+          TOMORROW_DAY=$(date -d "tomorrow" +%d)
+          if [ "$TOMORROW_DAY" -eq 1 ]; then
+            echo "is_last_day=true" >> $GITHUB_OUTPUT
+            echo "Today is the last day of the month! Scraper will seed upcoming festival templates."
+          else
+            echo "is_last_day=false" >> $GITHUB_OUTPUT
+            echo "Today is day $(date +%d). Trigger will run if dispatched manually or on push."
+          fi
+
+      - name: Setup Node.js
+        if: steps.check-date.outputs.is_last_day == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.check-date.outputs.is_last_day == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          npm install
+
+      - name: Run Cloud SQL Monthly Festival Scraper
+        if: steps.check-date.outputs.is_last_day == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          SQL_HOST: ${{ secrets.SQL_HOST }}
+          SQL_USER: ${{ secrets.SQL_USER }}
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          SQL_DB_NAME: ${{ secrets.SQL_DB_NAME }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          SEED_UPCOMING_MONTH: 'true'
+        run: |
+          npx tsx scripts/monthly-scraper.ts

@@ -1,0 +1,8 @@
+{
+  "name": "Poster App - Jewelry Gold Rate Posters",
+  "description": "Create daily gold rate promotional posters for your jewelry shop in seconds with customizable templates and rates.",
+  "prompt": "Poster App - Jewelry Gold Rate Posters",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
